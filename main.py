@@ -5,13 +5,14 @@ import argparse
 from ultralytics import YOLO
 import supervision as sv
 import numpy as np
+import time
 
-
+PERSON_COUNT = 0
 ZONE_POLYGON = np.array([
-    [0,0],
-    [1,0],
-    [1,1],
-    [0,1]
+    [.507,0],
+    [.51,0],
+    [.51,1],
+    [.507,1]
 ])
 
 def parse_args() -> argparse.Namespace:
@@ -28,13 +29,14 @@ def parse_args() -> argparse.Namespace:
     )
     return parser.parse_args() 
 
-def getPersonCount(itemList):
-    personCount = 0
-    for item in itemList:
-        if item == 0:
-            personCount += 1
-    return personCount
-
+def increase_person_count(increase):
+    
+    print("Increaseeee: ",increase)
+    global PERSON_COUNT
+    if  increase[0]:
+        PERSON_COUNT += 1
+   
+    
 def main():
     args = parse_args()
     
@@ -59,21 +61,23 @@ def main():
         result = model(frame,device="mps")[0] 
         
         detections = sv.Detections.from_yolov8(result)
+        detections = detections[detections.class_id == 0]
         
         labels = [
             f"{model.model.names[class_id]}: {confidince:.2f}"
             for _, confidince, class_id, _ in detections
         ]
-             
+        
         frame = box_annotator.annotate(scene=frame, detections=detections,labels=labels)
         
-        zone.trigger(detections)
+        increase =  zone.trigger(detections)
+        increase_person_count(increase)
         frame = zone_annotator.annotate(scene=frame)
         
-        cv2.putText(frame, str(getPersonCount(detections.class_id)),(10,30),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2) 
+        cv2.putText(frame, str(PERSON_COUNT),(10,30),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),2) 
         
         cv2.imshow('yolov8', frame)
-
+        
         if cv2.waitKey(1) == ord('q'):
             break
 
